@@ -1,0 +1,75 @@
+﻿FUNCTION_BLOCK "FB_RIPRISTINO_MR_1"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_OUTPUT 
+      bDone : Bool;   // fine ciclo
+      fase : Int;
+   END_VAR
+
+   VAR_IN_OUT 
+      bStart : Bool;   // start ciclo
+   END_VAR
+
+   VAR 
+      T20 {InstructionName := 'TON_TIME'; LibVersion := '1.0'; S7_SetPoint := 'False'} : TON_TIME;
+   END_VAR
+
+
+BEGIN
+	// ripristino MR
+	// 
+	
+	#T20(IN:=#fase = 20,
+	     PT:=t#1s);
+	
+	CASE #fase OF
+	        
+	    0:// attendo start
+	        IF #bStart THEN
+	            // comandi
+	            #bDone := FALSE;
+	            "DBParAssi".MR.IN.Exe_MC_Home := FALSE; // resetto homed
+	            "DBParAssi".MR.IN.Sp_MoveRel_Distance := -200.0;// vado indietro di x° era 200
+	            "DBParAssi".MR.IN.Sp_MoveAbs_Velocity := "DBParAssi".MR.vel."1";
+	            "DBParAssi".MR.IN.Exe_MC_MoveRelative := TRUE;
+	            
+	            #fase := 10;
+	        END_IF;
+	        
+	    10:
+	        IF "DBParAssi".MR.OUT.Output_MC_MoveRel_Done THEN
+	            // comandi
+	            "DBParAssi".MR.IN.Exe_MC_MoveRelative := FALSE;
+	            "DBParAssi".MR.IN.Exe_MC_Home := TRUE;// azzero quota
+	            
+	            #fase := 20;
+	        END_IF;
+	        
+	    20:
+	        IF "DBParAssi".MR.OUT.Output_MC_AxisHomed AND #T20.Q THEN
+	            // comandi
+	            //"DBParAssi".MR.IN.Exe_MC_Home := FALSE;
+	            "DBParAssi".MR.IN.Sp_MoveAbs_Position := "DBParAssi".MR.pos."1";// preset posizione 
+	            "DBParAssi".MR.IN.Sp_MoveAbs_Velocity := "DBParAssi".MR.vel."1";
+	            "DBParAssi".MR.IN.Exe_MC_MoveAbs := TRUE;
+	            
+	            #fase := 30;
+	        END_IF;
+	        
+	    30:// fineciclo
+	        IF "DBParAssi".MR.OUT.Output_MC_MoveAbs_Done THEN
+	            // comandi
+	            "DBParAssi".MR.IN.Exe_MC_MoveAbs := FALSE;
+	            #bDone := TRUE;
+	            #bStart := FALSE;
+	            #fase := 0;
+	        END_IF;
+	        
+	END_CASE;
+	
+	
+	
+	
+	
+END_FUNCTION_BLOCK
+

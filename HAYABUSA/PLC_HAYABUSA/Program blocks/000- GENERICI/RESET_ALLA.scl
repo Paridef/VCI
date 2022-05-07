@@ -1,0 +1,27 @@
+﻿FUNCTION "RESET_ALLA" : Void
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      trigger : Bool;
+   END_VAR
+
+
+BEGIN
+	// reset allarmi
+	// 
+	
+	IF #trigger THEN
+	    // reset alla homing
+	    "ALLA_01_FC_HOMING_MS" := FALSE;
+	    "ALLA_02_FC_HOMING_MR" := FALSE;
+	    "FB_RIPRISTINO_GEN_DB".fase := 0;
+	    "FB_RIPRISTINO_MR_DB".fase := 0;
+	    "FB_RIPRISTINO_MS_DB".fase := 0;
+	    
+	// DB ALLARMI    
+	    "DB_ALLA".wordAlla01 := 0;
+	    
+	END_IF;
+	
+END_FUNCTION
+

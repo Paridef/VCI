@@ -1,0 +1,60 @@
+﻿FUNCTION "RESET_GENERALE" : Void
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_INPUT 
+      trigger : Bool;
+   END_VAR
+
+
+BEGIN
+	// reset generale
+	// 
+	IF #trigger OR "RESET_ALLARMI" THEN
+	    "DBParAssi".MR.IN.Exe_MC_MoveRelative := FALSE;
+	    "DBParAssi".MR.IN.Exe_MC_MoveAbs := FALSE;
+	    "DBParAssi".MR.IN.Exe_MC_Halt := FALSE;
+	    "FB_RIPRISTINO_MR_DB".bStart := 0;
+	    "FB_RIPRISTINO_MR_DB".fase := 0;
+	    "FB_RIPRISTINO_MR_DB".bDone := 0;
+	    
+	    "DBParAssi".MA.IN.Exe_MC_MoveRelative := FALSE;
+	    "DBParAssi".MA.IN.Exe_MC_MoveAbs := FALSE;
+	    "DBParAssi".MA.IN.Exe_MC_Halt := FALSE;
+	    "FB_RIPRISTINO_MA_DB".bStart := 0;
+	    "FB_RIPRISTINO_MA_DB".fase := 0;
+	    "FB_RIPRISTINO_MA_DB".bDone := 0;
+	    
+	    "DBParAssi".MS.IN.Exe_MC_MoveRelative := FALSE;
+	    "DBParAssi".MS.IN.Exe_MC_MoveAbs := FALSE;
+	    "DBParAssi".MS.IN.Exe_MC_Halt := FALSE;
+	    "FB_RIPRISTINO_MS_DB".fase := 0;
+	    "FB_RIPRISTINO_MS_DB".bStart := 0;
+	    "FB_RIPRISTINO_MS_DB".bDone := 0;
+	    
+	    "DBParAssi".ME.IN.Exe_MC_MoveRelative := FALSE;
+	    "DBParAssi".ME.IN.Exe_MC_MoveAbs := FALSE;
+	    "DBParAssi".ME.IN.Exe_MC_Halt := FALSE;
+	    "FB_RIPRISTINO_ME_DB".bStart := 0;
+	    "FB_RIPRISTINO_ME_DB".fase := 0;
+	    "FB_RIPRISTINO_ME_DB".bDone := 0;
+	    
+	    // Reset seq
+	    // 
+	    "FB_CICLO_DB".fase := 0;
+	    "STARTCICLO" := 0;
+	    "RIPRISTINO" := 0;
+	    "FB_RIPRISTINO_GEN_DB".fase := 0;
+	    "FB_RIPRISTINO_GEN_DB".bStart := 0;
+	    
+	    // varie
+	    // 
+	    "FB_CICLO_DB".appComandoIndietroME := FALSE;
+	    
+	    
+	END_IF;
+	
+	
+	
+	
+END_FUNCTION
+

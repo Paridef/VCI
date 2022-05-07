@@ -1,0 +1,44 @@
+﻿ORGANIZATION_BLOCK "Startup"
+TITLE = "Complete Restart"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+
+BEGIN
+	
+	// STATI
+	"AUTOMATICO" := TRUE;
+	"MANUALE" := FALSE;
+	
+	"FB_RIPRISTINO_GEN_DB".fase := 0;
+	"FB_RIPRISTINO_GEN_DB".bDone := 0;
+	
+	"FB_RIPRISTINO_MR_DB".fase := 0;
+	"FB_RIPRISTINO_MR_DB".bDone := 0;
+	"FB_RIPRISTINO_MA_DB".fase := 0;
+	"FB_RIPRISTINO_MA_DB".bDone := 0;
+	"FB_RIPRISTINO_MS_DB".fase := 0;
+	"FB_RIPRISTINO_MS_DB".bDone := 0;
+	"FB_RIPRISTINO_ME_DB".fase := 0;
+	"FB_RIPRISTINO_ME_DB".bDone := 0;
+	
+	"PASSO_PASSO" := 0;
+	
+	"FB_CICLO_DB".fase := 0;
+	
+	// forzamento ripristino
+	"RIPRISTINO" := true;
+	
+	// forzamento valori e fronte per acce/dece
+	// "DBParAssi".MR.IN.Sp_RampDnTime := 1.0;
+	// "DBParAssi".MR.IN.Sp_RampUpTime := 1.0;
+	// "DBParAssi".MR.IN.Exe_MC_ChangeDyna := TRUE;
+	// 
+	
+	
+	// Ricetta di default
+	// 
+	"RICETTE".nomeRicetta:=WSTRING#'Filo 1 ok';
+	
+	
+END_ORGANIZATION_BLOCK
+

@@ -1,0 +1,104 @@
+﻿FUNCTION_BLOCK "FB_RIPRISTINO_MS_1"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_OUTPUT 
+      bDone : Bool;   // fine ciclo
+      fase : Int;
+   END_VAR
+
+   VAR_IN_OUT 
+      bStart : Bool;   // start ciclo
+   END_VAR
+
+   VAR 
+      T0 {InstructionName := 'TON_TIME'; LibVersion := '1.0'; S7_SetPoint := 'False'} : TON_TIME;
+      T35 {InstructionName := 'TON_TIME'; LibVersion := '1.0'; S7_SetPoint := 'False'} : TON_TIME;
+   END_VAR
+
+
+BEGIN
+	// ripristino MS (gestito unita' di mis ad impulsi 400 impulsi / giro) rapporto di rid 1/2
+	// 
+	
+	// #T20(IN:=#fase = 20,
+	//      PT:=t#1s);
+	
+	#T0(IN := #bStart,
+	     PT := t#20Ms);
+	 
+	#T35(IN := #fase = 35,
+	     PT := t#0.5s);
+	
+	CASE #fase OF
+	        
+	    0:// attendo start
+	        IF #bStart THEN
+	            // comandi
+	            #bDone := FALSE;
+	            "DBParAssi".MS.IN.Exe_MC_Home := FALSE; // resetto homed
+	            "DBParAssi".MS.IN.Sp_MoveRel_Distance := 800;// mando avanti di x [pulses] fino che prendo il sensore 800 = 2 giri
+	            "DBParAssi".MS.IN.Exe_MC_MoveRelative := TRUE;
+	            "DBParAssi".MS.IN.Sp_MoveRel_Velocity := 500; // p/s vel ripristino
+	            
+	            #fase := 10;
+	        END_IF;
+	        
+	    10:
+	        IF "DBParAssi".MS.OUT.Output_MC_MoveRel_Done OR "E0.0 FC HOMING MS"  THEN  // qui fare allarme no homing
+	            IF NOT "E0.0 FC HOMING MS" THEN
+	                "ALLA_01_FC_HOMING_MS" := TRUE;
+	                #fase := 900;  // fineciclo con allarme
+	            ELSE
+	                // comandi
+	                "DBParAssi".MS.IN.Exe_MC_Halt := TRUE;
+	                "DBParAssi".MS.IN.Exe_MC_MoveRelative := FALSE;
+	                "DBParAssi".MS.IN.Sp_MoveRel_Velocity := 1000; // p/s vel ripristino
+	              
+	                #fase := 20;
+	            END_IF;
+	        END_IF;
+	        
+	    20:
+	        IF "DBParAssi".MS.OUT.Output_MC_Halt_Done  THEN
+	            // comandi
+	            // 
+	            "DBParAssi".MS.IN.Exe_MC_Home := TRUE;// azzero quota
+	            
+	            #fase := 35;
+	        END_IF;
+	        
+	    35:
+	        IF "DBParAssi".MS.OUT.Output_MC_AxisHomed AND #T35.Q THEN
+	            // comandi
+	            // 
+	            "DBParAssi".MS.IN.Exe_MC_Halt := FALSE;
+	            "DBParAssi".MS.IN.Sp_MoveRel_Distance := "DBParAssi".MS.pos."1";// preset posizione per partenza
+	            "DBParAssi".MS.IN.Exe_MC_MoveRelative := TRUE;
+	            
+	            #fase := 40;
+	        END_IF;
+	        
+	    40:// fineciclo
+	        IF TRUE THEN
+	            // comandi
+	            "DBParAssi".MS.IN.Exe_MC_MoveRelative := FALSE;
+	            #bDone := TRUE;
+	            #bStart := FALSE;
+	            
+	            #fase := 0;
+	        END_IF;
+	        
+	    900:// fineciclo x allarme
+	        // comandi
+	        // 
+	        "DBParAssi".MS.IN.Exe_MC_MoveRelative := FALSE;
+	        #bStart := FALSE;
+	        
+	END_CASE;
+	
+	
+	
+	
+	
+END_FUNCTION_BLOCK
+

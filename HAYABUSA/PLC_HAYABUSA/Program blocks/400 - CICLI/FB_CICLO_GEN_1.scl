@@ -1,0 +1,387 @@
+﻿FUNCTION_BLOCK "FB_CICLO_GEN_1"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_OUTPUT 
+      fase : Int := 0;   // fase attiva
+   END_VAR
+
+   VAR 
+      condOkStartCiclo { S7_SetPoint := 'True'} : Bool;
+      T10 {InstructionName := 'TON_TIME'; LibVersion := '1.0'} : TON_TIME;
+      T20 {InstructionName := 'TON_TIME'; LibVersion := '1.0'} : TON_TIME;
+      T30 {InstructionName := 'TON_TIME'; LibVersion := '1.0'} : TON_TIME;
+      T40 {InstructionName := 'TON_TIME'; LibVersion := '1.0'} : TON_TIME;
+      T50 {InstructionName := 'TON_TIME'; LibVersion := '1.0'} : TON_TIME;
+      T60 {InstructionName := 'TON_TIME'; LibVersion := '1.0'} : TON_TIME;
+      T70 {InstructionName := 'TON_TIME'; LibVersion := '1.0'} : TON_TIME;
+      T75 {InstructionName := 'TON_TIME'; LibVersion := '1.0'} : TON_TIME;
+      T80 {InstructionName := 'TON_TIME'; LibVersion := '1.0'} : TON_TIME;
+      T90 {InstructionName := 'TON_TIME'; LibVersion := '1.0'} : TON_TIME;
+      T100 {InstructionName := 'TON_TIME'; LibVersion := '1.0'} : TON_TIME;
+      TcicloPrec { S7_SetPoint := 'True'} : Int;
+      TCicloAtt : Int;
+      appQuotaStartStrappi : Real;
+      FNStartCiclo : Bool;
+      AppFNStartCiclo : Bool;
+      FPClok01s : Bool;
+      AppFPClok01s : Bool;
+      appComandoIndietroME : Bool;
+   END_VAR
+
+   VAR CONSTANT 
+      T_DELAY_SEQ : Time;
+      T_DELAY_SCANSIONE : Time := T#20ms;
+   END_VAR
+
+
+BEGIN
+	// ciclo generale
+	// v0.1 passo passo
+	// v0.2 calcolo quota
+	// v0.3 indetro ME su quota strappi
+	REGION Timers
+	    
+	    #T10(IN := #fase = 10,
+	         PT := #T_DELAY_SEQ);
+	    
+	    #T20(IN := #fase = 20,
+	         PT := #T_DELAY_SEQ);
+	    
+	    #T30(IN := #fase = 30,
+	         PT := #T_DELAY_SEQ);
+	    
+	    #T40(IN := #fase = 40,
+	         PT := #T_DELAY_SEQ);
+	    
+	    #T50(IN := #fase = 50,
+	         PT := #T_DELAY_SEQ);
+	    
+	    #T60(IN := #fase = 60,
+	         PT := #T_DELAY_SEQ);
+	    
+	    #T70(IN := #fase = 70,
+	         PT := #T_DELAY_SCANSIONE);
+	    
+	    #T80(IN := #fase = 80,
+	         PT := #T_DELAY_SEQ);
+	    
+	    #T75(IN := #fase = 75,
+	         PT := #T_DELAY_SEQ);
+	    
+	    #T90(IN := #fase = 90,
+	         PT := #T_DELAY_SCANSIONE);
+	    
+	    #T100(IN := #fase = 100,
+	          PT := #T_DELAY_SEQ);
+	END_REGION
+	
+	// CONDIZIONI 
+	// 
+	#condOkStartCiclo := "AUTOMATICO" AND "RIPRISTINATO" AND "AUX_OK_T";
+	
+	// reset start
+	// 
+	IF NOT #condOkStartCiclo THEN
+	    "STARTCICLO" := FALSE;
+	END_IF;
+	
+	CASE #fase OF
+	        
+	    0: // introduzione MA + ME insieme + MS quota MA
+	        IF "STARTCICLO" AND #condOkStartCiclo THEN
+	            IF "PASSO_PASSO" THEN
+	                "STARTCICLO" := FALSE;
+	            END_IF;
+	            // comandi
+	            // MA
+	            "DBParAssi".MA.IN.Sp_MoveAbs_Position := "DBParAssi".MA.pos."1"; // 7.5 mm
+	            "DBParAssi".MA.IN.Exe_MC_MoveAbs := TRUE;
+	            // ME
+	            "DBParAssi".ME.IN.Sp_MoveAbs_Position := "DBParAssi".ME.pos."1"; // 120°
+	            "DBParAssi".ME.IN.Exe_MC_MoveAbs := TRUE;
+	            // MS
+	            "DBParAssi".MS.IN.Sp_MoveRel_Distance := "DBParAssi".MS.pos."3"; // quota MA
+	            "DBParAssi".MS.IN.Sp_MoveRel_Velocity := "DBParAssi".MS.vel."3"; // velocita
+	            "DBParAssi".MS.IN.Exe_MC_MoveRelative := TRUE;
+	            
+	            #fase := 10;
+	        END_IF;
+	        
+	    10: // detorsione
+	        IF #T10.Q
+	            AND "STARTCICLO"
+	            AND "DBParAssi".MA.OUT.Output_MC_MoveAbs_Done
+	            AND "DBParAssi".ME.OUT.Output_MC_MoveAbs_Done
+	            AND "DBParAssi".MS.OUT.Output_MC_MoveRel_Done
+	        THEN
+	            IF "PASSO_PASSO" THEN
+	                "STARTCICLO" := FALSE;
+	            END_IF;
+	            // comandi
+	            // MA
+	            "DBParAssi".MA.IN.Exe_MC_MoveAbs := FALSE;
+	            // MS
+	            "DBParAssi".MS.IN.Exe_MC_MoveRelative := FALSE;
+	            // ME
+	            "DBParAssi".ME.IN.Exe_MC_MoveAbs := FALSE;
+	            // MR
+	            "DBParAssi".MR.IN.Sp_MoveAbs_Position := "DBParAssi".MR.pos."2"; // X° quota intermedia detorsione parziale
+	            "DBParAssi".MR.IN.Sp_MoveAbs_Velocity := "DBParAssi".MR.vel."2";
+	            "DBParAssi".MR.IN.Exe_MC_MoveAbs := TRUE;
+	            
+	            #fase := 20;
+	        END_IF;
+	        
+	    20: // ME -
+	        IF #T20.Q
+	            AND "STARTCICLO"
+	            AND "DBParAssi".MR.OUT.Output_MC_MoveAbs_Done
+	        THEN
+	            // IF "PASSO_PASSO" THEN
+	            //     "STARTCICLO" := FALSE;
+	            // END_IF;
+	            // comandi
+	            // MR
+	            "DBParAssi".MR.IN.Exe_MC_MoveAbs := FALSE;
+	            // ME
+	            "DBParAssi".ME.IN.Sp_MoveAbs_Position := "DBParAssi".ME.pos."2"; // 0°
+	            "DBParAssi".ME.IN.Exe_MC_MoveAbs := TRUE;
+	            
+	            #fase := 30;
+	        END_IF;
+	        
+	    30:  // avanti MA
+	        IF #T30.Q AND "STARTCICLO"
+	            AND "DBParAssi"."ME".OUT.Output_MC_MoveAbs_Done
+	        THEN
+	            IF "PASSO_PASSO" THEN
+	                "STARTCICLO" := FALSE;
+	            END_IF;
+	            // comandi
+	            // ME
+	            "DBParAssi".ME.IN.Exe_MC_MoveAbs := FALSE;
+	            // MA
+	            "DBParAssi".MA.IN.Sp_MoveAbs_Position := "DBParAssi".MA.pos."2"; // 12.5 mm
+	            "DBParAssi".MA.IN.Exe_MC_MoveAbs := TRUE;
+	            
+	            #fase := 40;
+	        END_IF;
+	        
+	    40: // avanti MS
+	        IF #T40.Q
+	            AND "STARTCICLO"
+	            AND "DBParAssi".MA.OUT.Output_MC_MoveAbs_Done
+	        THEN
+	            IF "PASSO_PASSO" THEN
+	                "STARTCICLO" := FALSE;
+	            END_IF;
+	            // comandi
+	            // MA
+	            "DBParAssi".MA.IN.Exe_MC_MoveAbs := FALSE;
+	            // MS  
+	            // "DBParAssi".MS.IN.Sp_MoveRel_Distance := "DBParAssi".MS.pos."2";
+	            "DBParAssi".MS.IN.Sp_MoveRel_Distance := 800.0 - "DBParAssi".MS.pos."3"; // calcolo in base a quota MA
+	            "DBParAssi".MS.IN.Exe_MC_MoveRelative := TRUE;
+	            // // ME
+	            // "DBParAssi".ME.IN.Sp_MoveAbs_Position := "DBParAssi".ME.pos."2"; // 0°
+	            // "DBParAssi".ME.IN.Exe_MC_MoveAbs := TRUE;
+	            
+	            // staticizzo quota partenza Strappi
+	            // 
+	            #appQuotaStartStrappi := "DBParAssi".MS.OUT.Output_ActPos;
+	            #appComandoIndietroME := TRUE;
+	            
+	            #fase := 50;
+	        END_IF;
+	        
+	    50:   // fine detorsione MA
+	        IF #T50.Q
+	            AND "STARTCICLO"
+	            AND "DBParAssi".MS.OUT.Output_MC_MoveRel_Done
+	            // AND "DBParAssi"."ME".OUT.Output_MC_MoveAbs_Done
+	        THEN
+	            IF "PASSO_PASSO" THEN
+	                "STARTCICLO" := FALSE;
+	            END_IF;
+	            // comandi
+	            // MS
+	            "DBParAssi".MS.IN.Exe_MC_MoveRelative := FALSE;
+	            // // ME
+	            // "DBParAssi".ME.IN.Exe_MC_MoveAbs := FALSE;
+	            // MA indietro
+	            "DBParAssi".MA.IN.Sp_MoveAbs_Position := "DBParAssi".MA.pos."1"; // 7.5 mm
+	            "DBParAssi".MA.IN.Exe_MC_MoveAbs := TRUE;
+	            
+	            #fase := 55;
+	        END_IF;
+	        
+	    55: // MR indietro per ritorsione
+	        IF "STARTCICLO"
+	            AND "DBParAssi".MA.OUT.Output_MC_MoveAbs_Done
+	        THEN
+	            IF "PASSO_PASSO" THEN
+	                "STARTCICLO" := FALSE;
+	            END_IF;
+	            // comandi
+	            // MA
+	            "DBParAssi".MA.IN.Exe_MC_MoveAbs := FALSE;
+	            // MR indietro
+	            "DBParAssi".MR.IN.Sp_MoveAbs_Position := "DBParAssi".MR.pos."3"; // 0°
+	            "DBParAssi".MR.IN.Sp_MoveAbs_Velocity := "DBParAssi".MR.vel."3";
+	            "DBParAssi".MR.IN.Exe_MC_MoveAbs := TRUE;
+	            
+	            #fase := 60;
+	        END_IF;
+	        
+	    60: // attesa ritosione MR indietro
+	        IF #T60.Q
+	            AND "STARTCICLO"
+	            AND "DBParAssi".MR.OUT.Output_MC_MoveAbs_Done
+	        THEN
+	            // IF "PASSO_PASSO" THEN
+	            //     "STARTCICLO" := FALSE;
+	            // END_IF;
+	            // comandi
+	            // MR
+	            "DBParAssi".MR.IN.Exe_MC_MoveAbs := FALSE;
+	            
+	            #fase := 70;
+	        END_IF;
+	        
+	    70:// ritorsione  MA a 9.6mm
+	        IF #T70.Q
+	            AND "STARTCICLO"
+	        THEN
+	            IF "PASSO_PASSO" THEN
+	                "STARTCICLO" := FALSE;
+	            END_IF;
+	            // comandi
+	            // MA
+	            "DBParAssi".MA.IN.Sp_MoveAbs_Position := "DBParAssi".MA.pos."3"; // 9.6 mm
+	            "DBParAssi".MA.IN.Exe_MC_MoveAbs := TRUE;
+	            
+	            #fase := 75;
+	        END_IF;
+	        
+	    75:// ritorsione MR a 80°
+	        IF #T75.Q
+	            AND "STARTCICLO"
+	            AND "DBParAssi".MA.OUT.Output_MC_MoveAbs_Done
+	        THEN
+	            IF "PASSO_PASSO" THEN
+	                "STARTCICLO" := FALSE;
+	            END_IF;
+	            // comandi
+	            // MA
+	            "DBParAssi".MA.IN.Exe_MC_MoveAbs := FALSE;
+	            // MR
+	            "DBParAssi".MR.IN.Sp_MoveAbs_Position := "DBParAssi".MR.pos."4"; // 80°
+	            "DBParAssi".MR.IN.Sp_MoveAbs_Velocity := "DBParAssi".MR.vel."4";
+	            "DBParAssi".MR.IN.Exe_MC_MoveAbs := TRUE;
+	            
+	            #fase := 80;
+	        END_IF;
+	        
+	    80: // attesa segnali
+	        IF #T80.Q
+	            AND "STARTCICLO"
+	            AND "DBParAssi".MR.OUT.Output_MC_MoveAbs_Done
+	        THEN
+	            // IF "PASSO_PASSO" THEN
+	            //     "STARTCICLO" := FALSE;
+	            // END_IF;
+	            // comandi
+	            // MR
+	            "DBParAssi".MR.IN.Exe_MC_MoveAbs := FALSE;
+	            
+	            #fase := 90;
+	        END_IF;
+	        
+	    90: //  fineciclo MA a 0mm  
+	        IF #T90.Q
+	            AND "STARTCICLO"
+	        THEN
+	            IF "PASSO_PASSO" THEN
+	                "STARTCICLO" := FALSE;
+	            END_IF;
+	            // comandi
+	            // MA
+	            "DBParAssi".MA.IN.Sp_MoveAbs_Position := "DBParAssi".MA.pos."4"; // 0.0 mm
+	            "DBParAssi".MA.IN.Exe_MC_MoveAbs := TRUE;
+	            
+	            #fase := 100;
+	        END_IF;
+	        
+	    100:// MR ritorna a pos 1
+	        IF #T100.Q
+	            AND "STARTCICLO"
+	            AND "DBParAssi".MA.OUT.Output_MC_MoveAbs_Done
+	        THEN
+	            IF "PASSO_PASSO" THEN
+	                "STARTCICLO" := FALSE;
+	            END_IF;
+	            // comandi
+	            // MA
+	            "DBParAssi".MA.IN.Exe_MC_MoveAbs := FALSE;
+	            // MR
+	            "DBParAssi".MR.IN.Sp_MoveAbs_Position := "DBParAssi".MR.pos."1";
+	            "DBParAssi".MR.IN.Sp_MoveAbs_Velocity := "DBParAssi".MR.vel."1";
+	            "DBParAssi".MR.IN.Exe_MC_MoveAbs := TRUE;
+	            
+	            #fase := 200;
+	        END_IF;
+	        
+	    200: // fineciclo
+	        IF "DBParAssi".MR.OUT.Output_MC_MoveAbs_Done THEN
+	            // comandi
+	            // MA
+	            "DBParAssi".MR.IN.Exe_MC_MoveAbs := FALSE;
+	            "STARTCICLO" := FALSE;
+	            
+	            #fase := 0;
+	        END_IF;
+	        
+	END_CASE;
+	
+	REGION Indietro ME a quota
+	    // passo parallelo indietro ME risp quota MS
+	    // i blocchi vanno indietro quando raggiungo la quota desiderata
+	    IF #appComandoIndietroME AND ("DBParAssi".MS.OUT.Output_ActPos >= #appQuotaStartStrappi + 0.0) THEN  // era +10.0
+	        // ME indietro
+	        // "DBParAssi".ME.IN.Sp_MoveAbs_Position := "DBParAssi".ME.pos."2"; // 0°
+	        // "DBParAssi".ME.IN.Exe_MC_MoveAbs := TRUE;
+	        // azzero passo appoggio 
+	        // 
+	        #appComandoIndietroME := FALSE;
+	    END_IF;
+	    
+	END_REGION
+	
+	REGION T ciclo
+	    // tempo ciclo
+	    // 
+	    
+	    // clock
+	    // 
+	    #FPClok01s := "Clock_10Hz" AND NOT #AppFPClok01s;
+	    #AppFPClok01s := "Clock_10Hz";
+	    
+	    #FNStartCiclo := NOT "STARTCICLO" AND NOT #AppFNStartCiclo;
+	    #AppFNStartCiclo := NOT "STARTCICLO";
+	    
+	    IF "STARTCICLO" AND #FPClok01s THEN
+	        #TCicloAtt := #TCicloAtt + 1;
+	    END_IF;
+	    
+	    // staticizzo
+	    // 
+	    IF #FNStartCiclo THEN
+	        #TcicloPrec := #TCicloAtt;
+	        #TCicloAtt := 0;
+	    END_IF;
+	    
+	END_REGION
+	
+	
+END_FUNCTION_BLOCK
+

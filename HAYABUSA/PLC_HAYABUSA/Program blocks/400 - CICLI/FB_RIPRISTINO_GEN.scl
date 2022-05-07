@@ -1,0 +1,83 @@
+﻿FUNCTION_BLOCK "FB_RIPRISTINO_GEN"
+{ S7_Optimized_Access := 'TRUE' }
+VERSION : 0.1
+   VAR_OUTPUT 
+      bDone : Bool;   // bDone
+      fase : Int := 0;   // fase attiva
+   END_VAR
+
+   VAR_IN_OUT 
+      bStart : Bool;   // start ciclo
+   END_VAR
+
+   VAR 
+      condOkRipristino : Bool;
+      T10 {InstructionName := 'TON_TIME'; LibVersion := '1.0'; S7_SetPoint := 'False'} : TON_TIME;
+      T20 {InstructionName := 'TON_TIME'; LibVersion := '1.0'} : TON_TIME;
+   END_VAR
+
+
+BEGIN
+	// ripristino generale
+	
+	#T10(IN := #fase = 10,
+	     PT := t#1s);
+	
+	#T20(IN := #fase = 20,
+	     PT := t#1s);
+	
+	// CONDIZIONI 
+	// 
+	#condOkRipristino := NOT "STARTCICLO" AND "AUX_OK_T";
+	
+	// reset start
+	// 
+	IF NOT #condOkRipristino THEN
+	    "RIPRISTINO" := FALSE;
+	END_IF;
+	
+	
+	CASE #fase OF
+	        
+	    0: // attesa start ciclo
+	        IF "RIPRISTINO" AND #condOkRipristino THEN
+	            // comandi
+	            // 
+	            "FB_RIPRISTINO_MR_DB".bDone := FALSE;
+	            "FB_RIPRISTINO_MA_DB".bDone := FALSE;
+	            "FB_RIPRISTINO_MS_DB".bDone := FALSE;
+	            "FB_RIPRISTINO_ME_DB".bDone := FALSE;
+	            "RIPRISTINATO" := FALSE;
+	            
+	            "FB_RIPRISTINO_MA_DB".bStart := TRUE;
+	            "FB_RIPRISTINO_ME_DB".bStart := TRUE;
+	            
+	            #fase := 10;
+	        END_IF;
+	        
+	    10:
+	        IF "FB_RIPRISTINO_MA_DB".bDone AND "FB_RIPRISTINO_ME_DB".bDone
+	        THEN
+	            // comandi 
+	            // 
+	            "FB_RIPRISTINO_MR_DB".bStart := TRUE;
+	            "FB_RIPRISTINO_MS_DB".bStart := TRUE;
+	            
+	            #fase := 30;
+	        END_IF;
+	        
+	    30: // fineciclo
+	        IF   "FB_RIPRISTINO_MR_DB".bDone AND   "FB_RIPRISTINO_MS_DB".bDone        THEN
+	            // comandi 
+	            "RIPRISTINO" := FALSE;
+	            "RIPRISTINATO" := TRUE;
+	            #bDone := TRUE;
+	            
+	            #fase := 0;
+	        END_IF;
+	        
+	END_CASE;
+	
+	
+END_FUNCTION_BLOCK
+
